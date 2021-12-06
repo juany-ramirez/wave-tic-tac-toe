@@ -16,6 +16,12 @@ var winCoords = [
   { a: 2, b: 4, c: 6 },
 ];
 
+var cornerCoords = [0, 2, 6, 8];
+
+var sideCoords = [1, 3, 5, 7];
+
+var centerCoord = 4;
+
 var regexPlayer = {
   x: /x/g,
   o: /o/g,
@@ -26,7 +32,9 @@ module.exports = class TicTacToe {
     if (this.isBoardValid(board)) {
       this.board = board;
     } else {
-      throw new Error(`Invalid board: The only valid characters are x, o and spaces (Length must be 9)`);
+      throw new Error(
+        `Invalid board: The only valid characters are x, o and spaces (Length must be 9)`
+      );
     }
   }
 
@@ -42,7 +50,117 @@ module.exports = class TicTacToe {
       this.setMove(xWinnerMove);
       return this.board;
     }
+    this.onForkStrategy();
     return this.board;
+  }
+
+  onForkStrategy() {
+    const currentMoves = Math.abs((this.board.match(/ /g) || []).length - 9);
+
+    const player = 'o';
+    const opponent = 'x';
+
+    const playerCornerCount = this.getCornerCount(player);
+    const opponentCornerCount = this.getCornerCount(opponent);
+    const opponentSideCount = this.getSideCount(opponent);
+
+    if (
+      (playerCornerCount >= opponentCornerCount &&
+        opponentSideCount < opponentCornerCount) ||
+      currentMoves === 0 ||
+      (currentMoves === 1 && this.board[centerCoord] === opponent)
+    ) {
+      this.onCornerFork();
+      return;
+    }
+
+    if (this.board[centerCoord] === ' ') {
+      this.onCenterFork();
+      return;
+    } else if (this.board[centerCoord] === player && opponentCornerCount <= 1) {
+      this.onCornerFork(player);
+      return;
+    } else {
+      this.onSideMove();
+    }
+  }
+
+  getSideCount(player) {
+    let counter = 0;
+    for (let i = 0; i < sideCoords.length; i++) {
+      const idx = sideCoords[i];
+      if (this.board[idx] === player) counter += 1;
+    }
+    return counter;
+  }
+
+  getCornerCount(player) {
+    let counter = 0;
+    for (let i = 0; i < cornerCoords.length; i++) {
+      const idx = cornerCoords[i];
+      if (this.board[idx] === player) counter += 1;
+    }
+    return counter;
+  }
+
+  onCornerFork() {
+    const emptyCorners = this.getEmptyCorners();
+    let bestMove = this.getBestMove(emptyCorners);
+    this.setMove(bestMove);
+  }
+
+  onCenterFork() {
+    this.setMove(centerCoord);
+  }
+
+  onSideMove() {
+    const emptySides = this.getEmptySides();
+    let bestMove = this.getBestMove(emptySides);
+    this.setMove(bestMove);
+  }
+
+  getEmptySides() {
+    let emptySides = [];
+    for (let i = 0; i < sideCoords.length; i++) {
+      const idx = sideCoords[i];
+      if (this.board[idx] === ' ') emptySides.push(idx);
+    }
+    return emptySides;
+  }
+
+  getEmptyCorners() {
+    let emptyCorners = [];
+    for (let i = 0; i < cornerCoords.length; i++) {
+      const idx = cornerCoords[i];
+      if (this.board[idx] === ' ') emptyCorners.push(idx);
+    }
+    return emptyCorners;
+  }
+
+  getBestMove(emptyCorners) {
+    let bestMove = emptyCorners[0];
+    const possibleMoves = this.getSimulatedBoards(
+      'o',
+      this.board,
+      emptyCorners
+    );
+    possibleMoves.forEach((possibleMove) => {
+      const winnerMove = this.getWinnerMove('o', possibleMove.board);
+      if (winnerMove !== -1) bestMove = possibleMove.coords;
+    });
+    return bestMove;
+  }
+
+  getSimulatedBoards(player, board, emptySpaces) {
+    let possibleMoves = [];
+    emptySpaces.forEach((emptySpace) => {
+      const imaginaryBoard =
+        board.substr(0, emptySpace) +
+        player +
+        board.substr(emptySpace + 1, board.length);
+      possibleMoves.push({ board: imaginaryBoard, coords: emptySpace });
+    });
+    return possibleMoves;
   }
 
   setMove(idx) {
