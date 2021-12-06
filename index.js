@@ -23,7 +23,7 @@ app.get('/tic-tac-toe', (req, res) => {
       board = board.toLowerCase();
       const game = new TicTacToe(board);
       const result = game.playTheGame(board);
-      res.json({ board: result });
+      res.send(result);
     } catch (error) {
       console.log(error);
       res.status(400).send(error.message);
